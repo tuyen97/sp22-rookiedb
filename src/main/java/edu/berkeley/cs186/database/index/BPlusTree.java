@@ -146,7 +146,10 @@ public class BPlusTree {
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
         // TODO(proj2): implement
-
+        LeafNode leafNode = root.get(key);
+        if (leafNode == null) return Optional.empty();
+        int keyIdx = leafNode.getKeys().indexOf(key);
+        if (keyIdx != -1) return Optional.of(leafNode.getRids().get(keyIdx));
         return Optional.empty();
     }
 
@@ -257,6 +260,8 @@ public class BPlusTree {
         // Note: You should NOT update the root variable directly.
         // Use the provided updateRoot() helper method to change
         // the tree's root if the old root splits.
+        LeafNode leafNode = root.get(key);
+        if (leafNode.getKeys().contains(key)) throw new BPlusTreeException("Key existed!");
 
         return;
     }
