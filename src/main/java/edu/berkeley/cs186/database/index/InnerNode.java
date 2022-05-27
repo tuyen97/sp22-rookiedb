@@ -77,17 +77,29 @@ class InnerNode extends BPlusNode {
         }
     }
 
-    // Core API ////////////////////////////////////////////////////////////////
-    // See BPlusNode.get.
-    @Override
-    public LeafNode get(DataBox key) {
-        // TODO(proj2): implement
+    private long findChild(DataBox key) {
         int idx = 0;
         for (int i = 0; i < keys.size(); i++) {
             // phần tử đầu tiên lớn hơn
             if (keys.get(i).compareTo(key) <= 0) idx = idx + 1;
         }
-        long pageNum = children.get(idx);
+        return children.get(idx);
+    }
+
+    private int findSlot(DataBox key) {
+        int idx = 0;
+        for (int i = 0; i < keys.size(); i++) {
+            // phần tử đầu tiên lớn hơn
+            if (keys.get(i).compareTo(key) <= 0) idx = i + 1;
+        }
+        return idx;
+    }
+
+    // Core API ////////////////////////////////////////////////////////////////
+    // See BPlusNode.get.
+    @Override
+    public LeafNode get(DataBox key) {
+        long pageNum = findChild(key);
         BPlusNode node = BPlusNode.fromBytes(metadata, bufferManager, treeContext, pageNum);
         return node.get(key);
     }
@@ -96,17 +108,45 @@ class InnerNode extends BPlusNode {
     @Override
     public LeafNode getLeftmostLeaf() {
         assert (children.size() > 0);
-        // TODO(proj2): implement
 
         long pageNum = children.get(0);
-        return LeafNode.fromBytes(metadata, bufferManager, treeContext,pageNum);
+        return LeafNode.fromBytes(metadata, bufferManager, treeContext, pageNum);
     }
 
     // See BPlusNode.put.
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
-        // TODO(proj2): implement
+        long pageNum = findChild(key);
+        BPlusNode child = BPlusNode.fromBytes(metadata, bufferManager, treeContext, pageNum);
+        Optional<Pair<DataBox, Long>> newNode = child.put(key, rid);
 
+        // child overflows
+        if (newNode.isPresent()) {
+            DataBox newNodeKey = newNode.get().getFirst();
+            long newNodePageNum = newNode.get().getSecond();
+            int slot = findSlot(newNodeKey);
+            keys.add(slot, newNodeKey);
+            children.add(slot, newNodePageNum);
+
+            // page overflows
+            int maxOrder = metadata.getOrder();
+            if (keys.size() > 2 * maxOrder) {
+                InnerNode split = new InnerNode(
+                        metadata,
+                        bufferManager,
+                        new ArrayList<>(keys.subList(0, maxOrder)),
+                        new ArrayList<>(children.subList(0, maxOrder + 1)),
+                        treeContext
+                );
+                Optional<Pair<DataBox, Long>> splitResult = Optional.of(new Pair<>(keys.get(maxOrder), split.getPage().getPageNum()));
+                keys = new ArrayList<>(keys.subList(maxOrder + 1, keys.size()));
+                children = new ArrayList<>(children.subList(maxOrder + 1, children.size()));
+                sync();
+                return splitResult;
+            } else {
+                sync();
+            }
+        }
         return Optional.empty();
     }
 
@@ -122,9 +162,9 @@ class InnerNode extends BPlusNode {
     // See BPlusNode.remove.
     @Override
     public void remove(DataBox key) {
-        // TODO(proj2): implement
-
-        return;
+        long pageNum = findChild(key);
+        BPlusNode child = BPlusNode.fromBytes(metadata, bufferManager, treeContext, pageNum);
+        child.remove(key);
     }
 
     // Helpers /////////////////////////////////////////////////////////////////

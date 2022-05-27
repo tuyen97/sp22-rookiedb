@@ -147,23 +147,46 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.get.
     @Override
     public LeafNode get(DataBox key) {
-        // TODO(proj2): implement
         return this;
     }
 
     // See BPlusNode.getLeftmostLeaf.
     @Override
     public LeafNode getLeftmostLeaf() {
-        // TODO(proj2): implement
-
         return this;
     }
 
     // See BPlusNode.put.
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
-        // TODO(proj2): implement
+        // tìm vị trí để insert
+        int idx = 0;
+        for (int i = 0; i < keys.size(); i++) {
+            // phần tử đầu tiên lớn hơn
+            if (keys.get(i).compareTo(key) < 0) idx = i + 1;
+        }
+        keys.add(idx, key);
+        rids.add(idx, rid);
+        int maxOrder = metadata.getOrder();
 
+        // overflows
+        if (keys.size() > 2 * maxOrder) {
+            LeafNode leafNode1 = new LeafNode(
+                    metadata,
+                    bufferManager,
+                    new ArrayList<>(keys.subList(0, maxOrder)),
+                    new ArrayList<>(rids.subList(0, maxOrder)),
+                    Optional.of(page.getPageNum()),
+                    treeContext
+            );
+            Optional<Pair<DataBox, Long>> result = Optional.of(new Pair<>(keys.get(maxOrder), leafNode1.getPage().getPageNum()));
+            keys = new ArrayList<>(keys.subList(maxOrder, keys.size()));
+            rids = new ArrayList<>(rids.subList(maxOrder, rids.size()));
+            sync();
+            return result;
+        } else {
+            sync();
+        }
         return Optional.empty();
     }
 
@@ -179,9 +202,10 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.remove.
     @Override
     public void remove(DataBox key) {
-        // TODO(proj2): implement
-
-        return;
+        int idx = keys.indexOf(key);
+        keys.remove(key);
+        rids.remove(idx);
+        sync();
     }
 
     // Iterators ///////////////////////////////////////////////////////////////
