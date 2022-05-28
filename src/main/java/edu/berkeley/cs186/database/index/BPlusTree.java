@@ -180,7 +180,6 @@ public class BPlusTree {
 
 
     static class Itr implements Iterator<RecordId> {
-        private Optional<LeafNode> nextLeaf;
 
         private LeafNode currentLeaf;
 
@@ -189,22 +188,25 @@ public class BPlusTree {
         public Itr(LeafNode currentLeaf) {
             this.currentLeaf = currentLeaf;
             this.iterator = currentLeaf.scanAll();
-            nextLeaf = currentLeaf.getRightSibling();
         }
 
         @Override
         public boolean hasNext() {
-            return iterator.hasNext() || nextLeaf.isPresent();
+            // done element of current leaf
+            if (!iterator.hasNext()) {
+                Optional<LeafNode> nextLeaf = currentLeaf.getRightSibling();
+                if (!nextLeaf.isPresent()) return false;
+                currentLeaf = nextLeaf.get();
+                iterator = currentLeaf.scanAll();
+            }
+            return iterator.hasNext();
 
         }
 
         @Override
         public RecordId next() {
-            if (!iterator.hasNext() && !nextLeaf.isPresent()) throw new NoSuchElementException();
-            if (!iterator.hasNext()) {
-                iterator = nextLeaf.get().scanAll();
-                nextLeaf = currentLeaf.getRightSibling();
-            }
+            if (!iterator.hasNext())
+                throw new NoSuchElementException();
             return iterator.next();
 
         }
@@ -302,7 +304,7 @@ public class BPlusTree {
                         metadata,
                         bufferManager,
                         new ArrayList<>(Collections.singletonList(overflowNode.get().getFirst())),
-                        new ArrayList<>(Arrays.asList(overflowNode.get().getSecond(), root.getPage().getPageNum())),
+                        new ArrayList<>(Arrays.asList(root.getPage().getPageNum(), overflowNode.get().getSecond())),
                         lockContext
                 );
                 updateRoot(newRoot);

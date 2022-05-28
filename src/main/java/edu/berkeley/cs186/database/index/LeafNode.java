@@ -174,14 +174,15 @@ class LeafNode extends BPlusNode {
             LeafNode leafNode1 = new LeafNode(
                     metadata,
                     bufferManager,
-                    new ArrayList<>(keys.subList(0, maxOrder)),
-                    new ArrayList<>(rids.subList(0, maxOrder)),
-                    Optional.of(page.getPageNum()),
+                    new ArrayList<>(keys.subList(maxOrder, keys.size())),
+                    new ArrayList<>(rids.subList(maxOrder, keys.size())),
+                    rightSibling,
                     treeContext
             );
             Optional<Pair<DataBox, Long>> result = Optional.of(new Pair<>(keys.get(maxOrder), leafNode1.getPage().getPageNum()));
-            keys = new ArrayList<>(keys.subList(maxOrder, keys.size()));
-            rids = new ArrayList<>(rids.subList(maxOrder, rids.size()));
+            keys = new ArrayList<>(keys.subList(0, maxOrder));
+            rids = new ArrayList<>(rids.subList(0, maxOrder));
+            rightSibling = Optional.of(leafNode1.getPage().getPageNum());
             sync();
             return result;
         } else {
@@ -412,7 +413,13 @@ class LeafNode extends BPlusNode {
 
         byte nodeType = buffer.get();
         assert nodeType == 1;
-        Long rightSibling = buffer.getLong();
+        long rightSiblingPageNum = buffer.getLong();
+        Optional<Long> rightSibling;
+        if (rightSiblingPageNum == -1){
+            rightSibling = Optional.empty();
+        }else {
+            rightSibling = Optional.of(rightSiblingPageNum);
+        }
         int numKeys = buffer.getInt();
 
         List<DataBox> keys = new ArrayList<>();
@@ -423,7 +430,7 @@ class LeafNode extends BPlusNode {
             rids.add(RecordId.fromBytes(buffer));
         }
 
-        return new LeafNode(metadata, bufferManager, page, keys, rids, Optional.of(rightSibling), treeContext);
+        return new LeafNode(metadata, bufferManager, page, keys, rids, rightSibling, treeContext);
     }
 
     // Builtins ////////////////////////////////////////////////////////////////

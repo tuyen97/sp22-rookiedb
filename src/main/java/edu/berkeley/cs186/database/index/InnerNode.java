@@ -109,11 +109,11 @@ class InnerNode extends BPlusNode {
     public LeafNode getLeftmostLeaf() {
         assert (children.size() > 0);
 
-        long pageNum = children.get(0);
-        return LeafNode.fromBytes(metadata, bufferManager, treeContext, pageNum);
+        BPlusNode leftMostChild = BPlusNode.fromBytes(metadata, bufferManager, treeContext, children.get(0));
+        return leftMostChild.getLeftmostLeaf();
     }
 
-    // See BPlusNode.put.
+    // See BPlusNode.put./
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
         long pageNum = findChild(key);
@@ -126,7 +126,8 @@ class InnerNode extends BPlusNode {
             long newNodePageNum = newNode.get().getSecond();
             int slot = findSlot(newNodeKey);
             keys.add(slot, newNodeKey);
-            children.add(slot, newNodePageNum);
+            // swap children
+            children.add(slot + 1, newNodePageNum);
 
             // page overflows
             int maxOrder = metadata.getOrder();
