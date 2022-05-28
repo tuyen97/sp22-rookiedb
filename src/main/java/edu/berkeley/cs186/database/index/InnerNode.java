@@ -129,19 +129,21 @@ class InnerNode extends BPlusNode {
             // swap children
             children.add(slot + 1, newNodePageNum);
 
-            // page overflows
+            // current overflows too
             int maxOrder = metadata.getOrder();
             if (keys.size() > 2 * maxOrder) {
+                // node mới là phần bên phải
                 InnerNode split = new InnerNode(
                         metadata,
                         bufferManager,
-                        new ArrayList<>(keys.subList(0, maxOrder)),
-                        new ArrayList<>(children.subList(0, maxOrder + 1)),
+                        new ArrayList<>(keys.subList(maxOrder + 1, keys.size())),
+                        new ArrayList<>(children.subList(maxOrder + 1, children.size())),
                         treeContext
                 );
+                // trả về id ở giữa + page bên phải
                 Optional<Pair<DataBox, Long>> splitResult = Optional.of(new Pair<>(keys.get(maxOrder), split.getPage().getPageNum()));
-                keys = new ArrayList<>(keys.subList(maxOrder + 1, keys.size()));
-                children = new ArrayList<>(children.subList(maxOrder + 1, children.size()));
+                keys = new ArrayList<>( keys.subList(0, maxOrder));
+                children = new ArrayList<>(children.subList(0, maxOrder + 1));
                 sync();
                 return splitResult;
             } else {

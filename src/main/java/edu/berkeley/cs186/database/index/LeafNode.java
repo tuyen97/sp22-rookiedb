@@ -169,8 +169,9 @@ class LeafNode extends BPlusNode {
         rids.add(idx, rid);
         int maxOrder = metadata.getOrder();
 
-        // overflows
+        // leaf overflows
         if (keys.size() > 2 * maxOrder) {
+            // page mới tách ra bên phải
             LeafNode leafNode1 = new LeafNode(
                     metadata,
                     bufferManager,
@@ -179,9 +180,11 @@ class LeafNode extends BPlusNode {
                     rightSibling,
                     treeContext
             );
+            // trả về key + id của node mới (bên phải)
             Optional<Pair<DataBox, Long>> result = Optional.of(new Pair<>(keys.get(maxOrder), leafNode1.getPage().getPageNum()));
             keys = new ArrayList<>(keys.subList(0, maxOrder));
             rids = new ArrayList<>(rids.subList(0, maxOrder));
+            // cập nhật lại node kế tiếp
             rightSibling = Optional.of(leafNode1.getPage().getPageNum());
             sync();
             return result;
