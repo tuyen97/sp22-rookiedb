@@ -78,21 +78,12 @@ class InnerNode extends BPlusNode {
     }
 
     private long findChild(DataBox key) {
-        int idx = 0;
-        for (int i = 0; i < keys.size(); i++) {
-            // phần tử đầu tiên lớn hơn
-            if (keys.get(i).compareTo(key) <= 0) idx = idx + 1;
-        }
+        int idx = numLessThanEqual(key, keys);
         return children.get(idx);
     }
 
     private int findSlot(DataBox key) {
-        int idx = 0;
-        for (int i = 0; i < keys.size(); i++) {
-            // phần tử đầu tiên lớn hơn
-            if (keys.get(i).compareTo(key) <= 0) idx = i + 1;
-        }
-        return idx;
+        return numLessThanEqual(key, keys);
     }
 
     // Core API ////////////////////////////////////////////////////////////////

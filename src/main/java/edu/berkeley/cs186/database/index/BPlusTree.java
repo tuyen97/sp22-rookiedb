@@ -184,9 +184,9 @@ public class BPlusTree {
 
         private Iterator<RecordId> iterator;
 
-        public Itr(LeafNode currentLeaf) {
+        public Itr(LeafNode currentLeaf, Iterator<RecordId> initIterator) {
             this.currentLeaf = currentLeaf;
-            this.iterator = currentLeaf.scanAll();
+            this.iterator = initIterator;
         }
 
         @Override
@@ -239,7 +239,9 @@ public class BPlusTree {
     public Iterator<RecordId> scanAll() {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
-        return new Itr(root.getLeftmostLeaf());
+        LeafNode leftMostLeaf = root.getLeftmostLeaf();
+        Iterator<RecordId> initIterator = leftMostLeaf.scanAll();
+        return new Itr(leftMostLeaf, initIterator);
     }
 
     /**
@@ -270,9 +272,9 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): Return a BPlusTreeIterator.
-
-        return Collections.emptyIterator();
+        LeafNode leafNode = root.get(key);
+        Iterator<RecordId> initIterator = leafNode.scanGreaterEqual(key);
+        return new Itr(leafNode, initIterator);
     }
 
     /**
@@ -341,12 +343,10 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
         // Note: You should NOT update the root variable directly.
         // Use the provided updateRoot() helper method to change
         // the tree's root if the old root splits.
-
-        return;
+        root.bulkLoad(data, fillFactor);
     }
 
     /**

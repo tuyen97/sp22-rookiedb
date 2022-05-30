@@ -160,11 +160,7 @@ class LeafNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
         // tìm vị trí để insert
-        int idx = 0;
-        for (int i = 0; i < keys.size(); i++) {
-            // phần tử đầu tiên lớn hơn
-            if (keys.get(i).compareTo(key) < 0) idx = i + 1;
-        }
+        int idx = InnerNode.numLessThan(key, keys);
         keys.add(idx, key);
         rids.add(idx, rid);
         int maxOrder = metadata.getOrder();
