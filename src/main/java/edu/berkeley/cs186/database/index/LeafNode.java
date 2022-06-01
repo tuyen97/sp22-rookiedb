@@ -195,7 +195,32 @@ class LeafNode extends BPlusNode {
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
                                                   float fillFactor) {
         // TODO(proj2): implement
-
+        boolean hasSlot = true;
+        while (hasSlot) {
+            if (data.hasNext()) {
+                Pair<DataBox, RecordId> item = data.next();
+                // node đã đầy cần tách
+                if (keys.size() == Math.ceil(fillFactor * metadata.getOrder())) {
+                    LeafNode leafNode = new LeafNode(
+                            metadata,
+                            bufferManager,
+                            Collections.singletonList(item.getFirst()),
+                            Collections.singletonList(item.getSecond()),
+                            Optional.empty(),
+                            treeContext
+                    );
+                    rightSibling = Optional.of(leafNode.getPage().getPageNum());
+                    sync();
+                    return Optional.of(new Pair<>(item.getFirst(), leafNode.getPage().getPageNum()));
+                }else {
+                    keys.add(item.getFirst());
+                    rids.add(item.getSecond());
+                    sync();
+                }
+            }else {
+                hasSlot = false;
+            }
+        }
         return Optional.empty();
     }
 
@@ -414,9 +439,9 @@ class LeafNode extends BPlusNode {
         assert nodeType == 1;
         long rightSiblingPageNum = buffer.getLong();
         Optional<Long> rightSibling;
-        if (rightSiblingPageNum == -1){
+        if (rightSiblingPageNum == -1) {
             rightSibling = Optional.empty();
-        }else {
+        } else {
             rightSibling = Optional.of(rightSiblingPageNum);
         }
         int numKeys = buffer.getInt();

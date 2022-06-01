@@ -110,6 +110,7 @@ class InnerNode extends BPlusNode {
         long pageNum = findChild(key);
         BPlusNode child = BPlusNode.fromBytes(metadata, bufferManager, treeContext, pageNum);
         Optional<Pair<DataBox, Long>> newNode = child.put(key, rid);
+        Optional<Pair<DataBox, Long>> result = Optional.empty();
 
         // child overflows
         if (newNode.isPresent()) {
@@ -123,34 +124,54 @@ class InnerNode extends BPlusNode {
             // current overflows too
             int maxOrder = metadata.getOrder();
             if (keys.size() > 2 * maxOrder) {
-                // node mới là phần bên phải
-                InnerNode split = new InnerNode(
-                        metadata,
-                        bufferManager,
-                        new ArrayList<>(keys.subList(maxOrder + 1, keys.size())),
-                        new ArrayList<>(children.subList(maxOrder + 1, children.size())),
-                        treeContext
-                );
-                // trả về id ở giữa + page bên phải
-                Optional<Pair<DataBox, Long>> splitResult = Optional.of(new Pair<>(keys.get(maxOrder), split.getPage().getPageNum()));
-                keys = new ArrayList<>( keys.subList(0, maxOrder));
-                children = new ArrayList<>(children.subList(0, maxOrder + 1));
-                sync();
-                return splitResult;
-            } else {
-                sync();
+                InnerNode n = split();
+                result = Optional.of(new Pair<>(key, n.getPage().getPageNum()));
             }
+            sync();
+
         }
-        return Optional.empty();
+        return result;
     }
+
+    private InnerNode split() {
+        int maxOrder = metadata.getOrder();
+        // node mới là phần bên phải
+        // trả về id ở giữa + page bên phải
+        keys = new ArrayList<>(keys.subList(0, maxOrder));
+        children = new ArrayList<>(children.subList(0, maxOrder + 1));
+        return new InnerNode(
+                metadata,
+                bufferManager,
+                new ArrayList<>(keys.subList(maxOrder + 1, keys.size())),
+                new ArrayList<>(children.subList(maxOrder + 1, children.size())),
+                treeContext
+        );
+    }
+
 
     // See BPlusNode.bulkLoad.
     @Override
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
                                                   float fillFactor) {
         // TODO(proj2): implement
+        BPlusNode rightMostChild = BPlusNode.fromBytes(metadata, bufferManager, treeContext, children.get(children.size() - 1));
+        Optional<Pair<DataBox, Long>> bulkLoadResult = rightMostChild.bulkLoad(data, fillFactor);
+        Optional<Pair<DataBox, Long>> result = Optional.empty();
 
-        return Optional.empty();
+        // con bị tách
+        if (bulkLoadResult.isPresent()) {
+            keys.add(bulkLoadResult.get().getFirst());
+            children.add(bulkLoadResult.get().getSecond());
+
+            // cha cũng phải tách
+            if (keys.size() > 2 * metadata.getOrder()) {
+                InnerNode innerNode = split();
+                sync();
+                result = innerNode.bulkLoad(data, fillFactor);
+            }
+            sync();
+        }
+        return result;
     }
 
     // See BPlusNode.remove.
