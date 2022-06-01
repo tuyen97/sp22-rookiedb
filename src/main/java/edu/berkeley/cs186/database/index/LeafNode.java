@@ -200,7 +200,7 @@ class LeafNode extends BPlusNode {
             if (data.hasNext()) {
                 Pair<DataBox, RecordId> item = data.next();
                 // node đã đầy cần tách
-                if (keys.size() == Math.ceil(fillFactor * metadata.getOrder())) {
+                if (keys.size() == Math.ceil(2 * fillFactor * metadata.getOrder())) {
                     LeafNode leafNode = new LeafNode(
                             metadata,
                             bufferManager,
@@ -212,12 +212,12 @@ class LeafNode extends BPlusNode {
                     rightSibling = Optional.of(leafNode.getPage().getPageNum());
                     sync();
                     return Optional.of(new Pair<>(item.getFirst(), leafNode.getPage().getPageNum()));
-                }else {
+                } else {
                     keys.add(item.getFirst());
                     rids.add(item.getSecond());
                     sync();
                 }
-            }else {
+            } else {
                 hasSlot = false;
             }
         }

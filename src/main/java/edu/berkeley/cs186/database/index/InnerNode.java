@@ -124,28 +124,34 @@ class InnerNode extends BPlusNode {
             // current overflows too
             int maxOrder = metadata.getOrder();
             if (keys.size() > 2 * maxOrder) {
-                InnerNode n = split();
-                result = Optional.of(new Pair<>(key, n.getPage().getPageNum()));
+                Pair<DataBox, InnerNode> splitted = split();
+                result = Optional.of(new Pair<>(splitted.getFirst(), splitted.getSecond().getPage().getPageNum()));
+            } else {
+                sync();
             }
-            sync();
 
         }
         return result;
     }
 
-    private InnerNode split() {
+
+    // trả về id cần insert + page của node mới
+    private Pair<DataBox, InnerNode> split() {
         int maxOrder = metadata.getOrder();
         // node mới là phần bên phải
         // trả về id ở giữa + page bên phải
-        keys = new ArrayList<>(keys.subList(0, maxOrder));
-        children = new ArrayList<>(children.subList(0, maxOrder + 1));
-        return new InnerNode(
+        InnerNode newNode = new InnerNode(
                 metadata,
                 bufferManager,
                 new ArrayList<>(keys.subList(maxOrder + 1, keys.size())),
                 new ArrayList<>(children.subList(maxOrder + 1, children.size())),
                 treeContext
         );
+        DataBox splitKey = keys.get(maxOrder);
+        keys = new ArrayList<>(keys.subList(0, maxOrder));
+        children = new ArrayList<>(children.subList(0, maxOrder + 1));
+        sync();
+        return new Pair<>(splitKey, newNode);
     }
 
 
@@ -165,11 +171,11 @@ class InnerNode extends BPlusNode {
 
             // cha cũng phải tách
             if (keys.size() > 2 * metadata.getOrder()) {
-                InnerNode innerNode = split();
+                Pair<DataBox, InnerNode> splitted = split();
+                result = Optional.of(new Pair<>(splitted.getFirst(), splitted.getSecond().getPage().getPageNum()));
+            } else {
                 sync();
-                result = innerNode.bulkLoad(data, fillFactor);
             }
-            sync();
         }
         return result;
     }
