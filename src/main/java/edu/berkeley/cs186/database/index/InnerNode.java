@@ -159,7 +159,6 @@ class InnerNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
                                                   float fillFactor) {
-        // TODO(proj2): implement
         BPlusNode rightMostChild = BPlusNode.fromBytes(metadata, bufferManager, treeContext, children.get(children.size() - 1));
         Optional<Pair<DataBox, Long>> bulkLoadResult = rightMostChild.bulkLoad(data, fillFactor);
         Optional<Pair<DataBox, Long>> result = Optional.empty();
